@@ -3,7 +3,7 @@ import 'react-native-get-random-values';
 import { Buffer } from 'buffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AesGcmCrypto from 'react-native-aes-gcm-crypto';
-import Argon2 from "react-native-argon2";
+import argon2 from 'react-native-argon2';  // ✅ default import
 
 const NAMESPACE = '@securekv:v1:';
 
@@ -18,10 +18,10 @@ function newRandomBytes(n) {
     return a;
 }
 
-// Derive encryption key using Argon2
+// ---------------- KDF (Argon2) ----------------
 async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
-    if (!passphrase || typeof passphrase !== "string") {
-        throw new Error("passphrase must be a non-empty string for key derivation");
+    if (!passphrase || typeof passphrase !== 'string') {
+        throw new Error('passphrase must be a non-empty string for key derivation');
     }
 
     const {
@@ -29,29 +29,28 @@ async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
         mem = 65536,
         parallelism = 1,
         hashLen = 32,
+        mode = 'argon2id'
     } = opts;
 
     try {
-        const res = await Argon2.hash({
-            password: passphrase,
-            salt: saltB64,
+        // ✅ API is argon2(password, salt, config)
+        const res = await argon2(passphrase, saltB64, {
             iterations: time,
             memory: mem,
             parallelism,
             hashLength: hashLen,
+            mode
         });
 
-        // base64 string, suitable for AES key
-        return res.rawHash;
+        // res.rawHash = hex string, convert to base64 for AES key
+        return Buffer.from(res.rawHash, 'hex').toString('base64');
     } catch (err) {
-        console.error("Argon2 key derivation failed:", err);
+        console.error('Argon2 key derivation failed:', err);
         throw err;
     }
 }
 
 // ---------------- API ----------------
-
-// Encrypt value and store
 export async function encryptAndStore(itemKey, plainString, passphrase, options = {}) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
@@ -71,7 +70,7 @@ export async function encryptAndStore(itemKey, plainString, passphrase, options 
     const payload = {
         version: 'v1',
         alg: 'AES-256-GCM',
-        kdf: 'react-native-argon2',   // 🔥 updated
+        kdf: 'react-native-argon2',
         kdfParams,
         salt: saltB64,
         iv: enc.iv,
@@ -82,7 +81,6 @@ export async function encryptAndStore(itemKey, plainString, passphrase, options 
     await AsyncStorage.setItem(`${NAMESPACE}${itemKey}`, JSON.stringify(payload));
 }
 
-// Retrieve and decrypt (requires passphrase)
 export async function getAndDecrypt(itemKey, passphrase) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
@@ -104,14 +102,12 @@ export async function getAndDecrypt(itemKey, passphrase) {
     const keyB64 = await deriveKeyArgon2(passphrase, salt, kdfParams);
 
     try {
-        const plain = await AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false);
-        return plain;
+        return await AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false);
     } catch {
         throw new Error('Decryption failed — wrong passphrase or tampered data');
     }
 }
 
-// Remove one item
 export async function removeItem(itemKey) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
@@ -119,7 +115,6 @@ export async function removeItem(itemKey) {
     await AsyncStorage.removeItem(`${NAMESPACE}${itemKey}`);
 }
 
-// Clear all SecureKV items
 export async function clearAll() {
     const keys = await AsyncStorage.getAllKeys();
     const secureKeys = keys.filter(k => k.startsWith(NAMESPACE));
@@ -128,7 +123,6 @@ export async function clearAll() {
     }
 }
 
-// Create verification blob
 export async function createVerifyBlob(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
         throw new Error('passphrase must be provided to create verify blob');
@@ -136,7 +130,6 @@ export async function createVerifyBlob(passphrase) {
     await encryptAndStore('__verify__', 'ok', passphrase);
 }
 
-// Verify passphrase
 export async function verifyPassphrase(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
         throw new Error('passphrase is required to verify');
