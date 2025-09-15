@@ -3,7 +3,7 @@ import 'react-native-get-random-values';
 import { Buffer } from 'buffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AesGcmCrypto from 'react-native-aes-gcm-crypto';
-import { hash } from "react-native-argon2";
+import Argon2 from "react-native-argon2";
 
 const NAMESPACE = '@securekv:v1:';
 
@@ -20,27 +20,33 @@ function newRandomBytes(n) {
 
 // Derive encryption key using Argon2
 async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
-    if (!passphrase || typeof passphrase !== 'string') {
-        throw new Error('passphrase must be a non-empty string for key derivation');
+    if (!passphrase || typeof passphrase !== "string") {
+        throw new Error("passphrase must be a non-empty string for key derivation");
     }
 
     const {
         time = 2,
         mem = 65536,
         parallelism = 1,
-        hashLen = 32
+        hashLen = 32,
     } = opts;
 
-    const res = await hash({
-        password: passphrase,
-        salt: saltB64,
-        iterations: time,
-        memory: mem,
-        parallelism,
-        hashLength: hashLen
-    });
+    try {
+        const res = await Argon2.hash({
+            password: passphrase,
+            salt: saltB64,
+            iterations: time,
+            memory: mem,
+            parallelism,
+            hashLength: hashLen,
+        });
 
-    return res.rawHash; // already base64
+        // base64 string, suitable for AES key
+        return res.rawHash;
+    } catch (err) {
+        console.error("Argon2 key derivation failed:", err);
+        throw err;
+    }
 }
 
 // ---------------- API ----------------
