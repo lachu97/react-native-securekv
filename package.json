@@ -1,16 +1,26 @@
 {
   "name": "react-native-securekv",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Secure key-value storage for React Native (Argon2 + AES-GCM)",
   "main": "lib/index.js",
-  "files": ["lib", "README.md", "LICENSE"],
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "babel src --out-dir lib --copy-files",
     "test": "jest",
     "lint": "eslint src",
     "prepare": "npm run build"
   },
-  "keywords": ["react-native", "secure", "storage", "aes-gcm", "argon2"],
+  "keywords": [
+    "react-native",
+    "secure",
+    "storage",
+    "aes-gcm",
+    "argon2"
+  ],
   "license": "MIT",
   "peerDependencies": {
     "react": ">=18.0.0",
