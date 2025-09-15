@@ -3,21 +3,13 @@ import 'react-native-get-random-values';
 import { Buffer } from 'buffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AesGcmCrypto from 'react-native-aes-gcm-crypto';
-import argon2 from 'argon2-wasm';
+import { hash } from "react-native-argon2";
 
 const NAMESPACE = '@securekv:v1:';
 
 // ---------------- Utils ----------------
 function u8ToBase64(u8) {
     return Buffer.from(u8).toString('base64');
-}
-
-function hexToBase64(hex) {
-    return Buffer.from(hex, 'hex').toString('base64');
-}
-
-function base64ToHex(b64) {
-    return Buffer.from(b64, 'base64').toString('hex');
 }
 
 function newRandomBytes(n) {
@@ -36,20 +28,19 @@ async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
         time = 2,
         mem = 65536,
         parallelism = 1,
-        hashLen = 32,
-        type = argon2.ArgonType.Argon2id
+        hashLen = 32
     } = opts;
 
-    const res = await argon2.hash({
-        pass: passphrase,
+    const res = await hash({
+        password: passphrase,
         salt: saltB64,
-        time,
-        mem,
-        hashLen,
-        type
+        iterations: time,
+        memory: mem,
+        parallelism,
+        hashLength: hashLen
     });
 
-    return hexToBase64(res.hashHex);
+    return res.rawHash; // already base64
 }
 
 // ---------------- API ----------------
@@ -74,7 +65,7 @@ export async function encryptAndStore(itemKey, plainString, passphrase, options 
     const payload = {
         version: 'v1',
         alg: 'AES-256-GCM',
-        kdf: 'argon2-wasm',
+        kdf: 'react-native-argon2',   // 🔥 updated
         kdfParams,
         salt: saltB64,
         iv: enc.iv,
@@ -91,7 +82,6 @@ export async function getAndDecrypt(itemKey, passphrase) {
         throw new Error('itemKey must be a non-empty string');
     }
     if (!passphrase || typeof passphrase !== 'string') {
-        // STRICT: refuse to return any ciphertext if passphrase not supplied
         throw new Error('passphrase is required to decrypt item');
     }
 
@@ -108,14 +98,9 @@ export async function getAndDecrypt(itemKey, passphrase) {
     const keyB64 = await deriveKeyArgon2(passphrase, salt, kdfParams);
 
     try {
-        // AesGcmCrypto.decrypt(ct, key, iv, tag, isBinary?) has different signatures between libs;
-        // our earlier usage was AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false)
-        // Some versions of the library use (ct, false, key) etc. If your AES lib signature differs,
-        // update call accordingly.
         const plain = await AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false);
         return plain;
-    } catch (err) {
-        // Do not leak details — generic error message is better
+    } catch {
         throw new Error('Decryption failed — wrong passphrase or tampered data');
     }
 }
@@ -137,8 +122,7 @@ export async function clearAll() {
     }
 }
 
-// Create verification blob (for checking passphrase correctness)
-// This stores an encrypted known-string under __verify__, and requires passphrase to decrypt.
+// Create verification blob
 export async function createVerifyBlob(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
         throw new Error('passphrase must be provided to create verify blob');
@@ -146,8 +130,7 @@ export async function createVerifyBlob(passphrase) {
     await encryptAndStore('__verify__', 'ok', passphrase);
 }
 
-// Verify passphrase by trying to decrypt the verify blob.
-// Returns true if passphrase can decrypt, false otherwise.
+// Verify passphrase
 export async function verifyPassphrase(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
         throw new Error('passphrase is required to verify');
