@@ -106,6 +106,8 @@ await SecureKV.setItem("secret", "value", passphrase, {
 
 3.AES-GCM provides both encryption and integrity protection.
 
+4.Supports Typescript
+
 ## 📜 License
 
 MIT © 2025
