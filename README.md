@@ -39,7 +39,13 @@ yarn add react-native react-native-get-random-values @react-native-async-storage
 
 import SecureKV from "react-native-securekv";
 
+// ensure polyfills in app entry:
+import 'react-native-get-random-values';
+import { Buffer } from 'buffer';
+if (typeof global.Buffer === 'undefined') global.Buffer = Buffer;
+
 async function demo() {
+    // Store this in env file and import it for more security.
   const passphrase = "myStrongPassword123";
 
   // Save a value securely
@@ -63,23 +69,23 @@ async function demo() {
 ```
 ## 🔑 API
 
-### setItem(key, value, passphrase, options?)
+`setItem(key, value, passphrase, options?)`
 
-Encrypts value using passphrase and stores it in AsyncStorage.
+Encrypts value using passphrase and stores it in SecureKV.
 
-### getItem(key, passphrase)
+`getItem(key, passphrase)`
 
 Retrieves and decrypts the value. Returns null if the key does not exist.
 
-### removeItem(key)
+`removeItem(key)`
 
 Removes a stored item.
 
-### clear()
+`clear()`
 
 Clears all stored secure items.
 
-### verify(key, passphrase)
+`verify(key, passphrase)`
 
 Checks if a stored item can be decrypted with the given passphrase.
 
