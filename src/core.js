@@ -32,7 +32,8 @@ async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
 
     try {
         // argon2(pass, salt, config) returns hex string
-        const derivedKeyHex = await argon2(passphrase, saltB64, {
+        const saltU8 = base64ToU8(saltB64);
+        const derivedKeyHex = await argon2(passphrase, saltU8, {
             iterations: time,
             memory: mem,
             parallelism,
