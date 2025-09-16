@@ -1,6 +1,6 @@
 {
   "name": "react-native-securekv",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Secure key-value storage for React Native (AES + SHA Hashing + AES-GCM)",
   "main": "lib/index.js",
   "files": [
