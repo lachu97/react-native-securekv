@@ -98,15 +98,6 @@ Stores a hidden encrypted “ok” marker for passphrase validation.
 
 Checks if a stored item can be decrypted with the given passphrase.
 
-## ⚙️ Options
-
-You can pass custom KDF (Argon2) parameters in setItem:
-```javascript
-await SecureKV.setItem("secret", "value", passphrase, {
-  kdfParams: { time: 3, mem: 131072, parallelism: 2, hashLen: 32 }
-});
-
-```
 ## 📌 Notes
 
 1.Always store passphrases securely. If the wrong passphrase is provided, decryption will fail.

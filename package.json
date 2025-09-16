@@ -23,7 +23,12 @@
     "react-native-securekv",
     "react-native-secure",
     "crypto-storage",
-    "react-native-simple-crypto"
+    "react-native-simple-crypto",
+    "AES-256-GCM",
+    "AES",
+    "PBKDF2-SHA256",
+    "Encrypt",
+    "Secure storage"
   ],
   "license": "MIT",
   "peerDependencies": {
