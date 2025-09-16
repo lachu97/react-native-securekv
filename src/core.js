@@ -1,134 +1,103 @@
 // src/core.js
 import 'react-native-get-random-values';
-import { Buffer } from 'buffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AesGcmCrypto from 'react-native-aes-gcm-crypto';
-import argon2 from 'argon2-wasm';
+import SimpleCrypto from 'react-native-simple-crypto';
 
 const NAMESPACE = '@securekv:v1:';
 
-// ---------------- Utils ----------------
-function u8ToBase64(u8) {
-    return Buffer.from(u8).toString('base64');
-}
-
-function hexToBase64(hex) {
-    return Buffer.from(hex, 'hex').toString('base64');
-}
-
-function base64ToHex(b64) {
-    return Buffer.from(b64, 'base64').toString('hex');
-}
-
-function newRandomBytes(n) {
-    const a = new Uint8Array(n);
-    crypto.getRandomValues(a);
-    return a;
-}
-
-// Derive encryption key using Argon2
-async function deriveKeyArgon2(passphrase, saltB64, opts = {}) {
-    if (!passphrase || typeof passphrase !== 'string') {
-        throw new Error('passphrase must be a non-empty string for key derivation');
-    }
-
-    const {
-        time = 2,
-        mem = 65536,
-        parallelism = 1,
-        hashLen = 32,
-        type = argon2.ArgonType.Argon2id
-    } = opts;
-
-    const res = await argon2.hash({
-        pass: passphrase,
-        salt: saltB64,
-        time,
-        mem,
-        hashLen,
-        type
-    });
-
-    return hexToBase64(res.hashHex);
-}
-
 // ---------------- API ----------------
 
-// Encrypt value and store
-export async function encryptAndStore(itemKey, plainString, passphrase, options = {}) {
+// Encrypt and store a value securely
+export async function encryptAndStore(itemKey, plainText, passphrase) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
     }
     if (!passphrase || typeof passphrase !== 'string') {
-        throw new Error('passphrase must be provided to encrypt data');
+        throw new Error('passphrase must be provided');
     }
 
-    const salt = newRandomBytes(16);
-    const saltB64 = u8ToBase64(salt);
+    // generate salt and iv using utils.randomBytes
+    const saltBuf = await SimpleCrypto.utils.randomBytes(16);
+    const saltB64 = SimpleCrypto.utils.convertArrayBufferToBase64(saltBuf);
 
-    const kdfParams = options.kdfParams || { time: 2, mem: 65536, parallelism: 1, hashLen: 32 };
-    const keyB64 = await deriveKeyArgon2(passphrase, saltB64, kdfParams);
+    // derive key using PBKDF2.hash(password: string, salt: ArrayBuffer, iterations: number, keyLength: number, hash: string)
+    const keyBuf = await SimpleCrypto.PBKDF2.hash(
+        passphrase,
+        saltBuf,
+        100000,
+        32,
+        'SHA256',
+    );
 
-    const enc = await AesGcmCrypto.encrypt(plainString, false, keyB64);
+    const ivBuf = await SimpleCrypto.utils.randomBytes(12);
+
+    // convert plaintext to ArrayBuffer
+    const plainBuf = SimpleCrypto.utils.convertUtf8ToArrayBuffer(plainText);
+
+    // encrypt
+    const cipherBuf = await SimpleCrypto.AES.encrypt(plainBuf, keyBuf, ivBuf);
 
     const payload = {
-        version: 'v1',
-        alg: 'AES-256-GCM',
-        kdf: 'argon2-wasm',
-        kdfParams,
         salt: saltB64,
-        iv: enc.iv,
-        tag: enc.tag,
-        ct: enc.content
+        iv: SimpleCrypto.utils.convertArrayBufferToBase64(ivBuf),
+        ct: SimpleCrypto.utils.convertArrayBufferToBase64(cipherBuf),
     };
 
     await AsyncStorage.setItem(`${NAMESPACE}${itemKey}`, JSON.stringify(payload));
 }
 
-// Retrieve and decrypt (requires passphrase)
+// Retrieve and decrypt a value (requires passphrase)
 export async function getAndDecrypt(itemKey, passphrase) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
     }
     if (!passphrase || typeof passphrase !== 'string') {
-        // STRICT: refuse to return any ciphertext if passphrase not supplied
-        throw new Error('passphrase is required to decrypt item');
+        throw new Error('passphrase is required');
     }
 
     const raw = await AsyncStorage.getItem(`${NAMESPACE}${itemKey}`);
-    if (!raw) return null;
+    if (!raw) {
+        return null;
+    }
 
-    const payload = JSON.parse(raw);
-    const { salt, kdfParams, iv, tag, ct } = payload;
-
-    if (!salt || !ct) {
+    const {salt, iv, ct} = JSON.parse(raw);
+    if (!salt || !iv || !ct) {
         throw new Error('Stored item is malformed');
     }
 
-    const keyB64 = await deriveKeyArgon2(passphrase, salt, kdfParams);
+    // convert salt, iv, ct from Base64 to ArrayBuffer
+    const saltBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(salt);
+    const ivBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(iv);
+    const ctBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(ct);
+
+    const keyBuf = await SimpleCrypto.PBKDF2.hash(
+        passphrase,
+        saltBuf,
+        100000,
+        32,
+        'SHA256',
+    );
 
     try {
-        // AesGcmCrypto.decrypt(ct, key, iv, tag, isBinary?) has different signatures between libs;
-        // our earlier usage was AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false)
-        // Some versions of the library use (ct, false, key) etc. If your AES lib signature differs,
-        // update call accordingly.
-        const plain = await AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false);
-        return plain;
-    } catch (err) {
-        // Do not leak details — generic error message is better
+        const decryptedBuf = await SimpleCrypto.AES.decrypt(ctBuf, keyBuf, ivBuf);
+        const decryptedText =
+            SimpleCrypto.utils.convertArrayBufferToUtf8(decryptedBuf);
+        return decryptedText;
+    } catch {
         throw new Error('Decryption failed — wrong passphrase or tampered data');
     }
 }
 
-// Remove one item
+// Remove a single item
 export async function removeItem(itemKey) {
     if (!itemKey || typeof itemKey !== 'string') {
         throw new Error('itemKey must be a non-empty string');
     }
+
     await AsyncStorage.removeItem(`${NAMESPACE}${itemKey}`);
 }
 
-// Clear all SecureKV items
+// Clear all stored SecureKV items
 export async function clearAll() {
     const keys = await AsyncStorage.getAllKeys();
     const secureKeys = keys.filter(k => k.startsWith(NAMESPACE));
@@ -137,31 +106,49 @@ export async function clearAll() {
     }
 }
 
-// Create verification blob (for checking passphrase correctness)
-// This stores an encrypted known-string under __verify__, and requires passphrase to decrypt.
+// Create verification blob (used to verify passphrase)
 export async function createVerifyBlob(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
-        throw new Error('passphrase must be provided to create verify blob');
+        throw new Error('passphrase must be provided');
     }
+
+    // store a tiny value under __verify__
     await encryptAndStore('__verify__', 'ok', passphrase);
 }
 
-// Verify passphrase by trying to decrypt the verify blob.
-// Returns true if passphrase can decrypt, false otherwise.
+// Verify passphrase correctness
 export async function verifyPassphrase(passphrase) {
     if (!passphrase || typeof passphrase !== 'string') {
-        throw new Error('passphrase is required to verify');
+        throw new Error('passphrase is required');
     }
 
     const raw = await AsyncStorage.getItem(`${NAMESPACE}__verify__`);
-    if (!raw) return false;
+    if (!raw) {
+        return false;
+    }
 
-    const payload = JSON.parse(raw);
-    const { salt, kdfParams, iv, tag, ct } = payload;
+    const {salt, iv, ct} = JSON.parse(raw);
+    if (!salt || !iv || !ct) {
+        return false;
+    }
 
-    const keyB64 = await deriveKeyArgon2(passphrase, salt, kdfParams || {});
     try {
-        await AesGcmCrypto.decrypt(ct, keyB64, iv, tag, false);
+        // convert salt, iv, ct back to ArrayBuffer
+        const saltBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(salt);
+        const ivBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(iv);
+        const ctBuf = SimpleCrypto.utils.convertBase64ToArrayBuffer(ct);
+
+        // derive key again
+        const keyBuf = await SimpleCrypto.PBKDF2.hash(
+            passphrase,
+            saltBuf,
+            100000,
+            32,
+            'SHA256',
+        );
+
+        // try decrypting
+        await SimpleCrypto.AES.decrypt(ctBuf, keyBuf, ivBuf);
         return true;
     } catch {
         return false;

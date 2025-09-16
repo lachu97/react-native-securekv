@@ -1,19 +1,24 @@
 # 📦 react-native-securekv
 
 **Secure key-value storage for React Native apps**  
-Built on **Argon2 key derivation** and **AES-256-GCM encryption**.  
+Built on **PBKDF2-SHA256** key derivation and **AES-256-GCM** encryption 
 Unlike `AsyncStorage`, all values are encrypted and can only be decrypted with the correct passphrase.  
 If the passphrase is lost, the data is unrecoverable.
 
 ---
 
 ## ✨ Features
-- 🔑 Strong **Argon2id** key derivation (memory-hard, resistant to brute force).
-- 🔒 **AES-256-GCM** encryption with authentication (detects tampering).
-- 🚫 **Passphrase required** for both encryption and decryption — no accidental leaks.
-- 🧹 Utilities to remove or clear stored items.
-- ✅ Passphrase verification helper.
-- ⚡ Drop-in for React Native apps (iOS + Android).
+🔑 Strong PBKDF2-SHA256 key derivation (configurable iterations, salt).
+
+🔒 AES-256-GCM encryption with authentication (detects tampering).
+
+🚫 Passphrase required for both encryption and decryption — no accidental leaks.
+
+🧹 Utilities to remove or clear stored items.
+
+✅ Passphrase verification helper.
+
+⚡ Drop-in for React Native apps (iOS + Android).
 
 ---
 
@@ -29,42 +34,42 @@ yarn add react-native-securekv
 ## 📦 Peer dependencies
 ```shell
 # with npm
-npm install react-native react-native-get-random-values @react-native-async-storage/async-storage
+# required peer deps
+npm install react-native-get-random-values @react-native-async-storage/async-storage react-native-simple-crypto
 
 # with yarn
-yarn add react-native react-native-get-random-values @react-native-async-storage/async-storage
+# required peer deps
+yarn add react-native-get-random-values @react-native-async-storage/async-storage react-native-simple-crypto
+
 ```
 ## 📖 Usage
 ```javascript
 
 import SecureKV from "react-native-securekv";
 
-// ensure polyfills in app entry:
-import 'react-native-get-random-values';
-import { Buffer } from 'buffer';
-if (typeof global.Buffer === 'undefined') global.Buffer = Buffer;
-
 async function demo() {
-    // Store this in env file and import it for more security.
-  const passphrase = "myStrongPassword123";
+    const passphrase = "myStrongPassword123"; // ideally from secure storage/env
 
-  // Save a value securely
-  await SecureKV.setItem("userToken", "abc123", passphrase);
+    // Save a value securely
+    await SecureKV.setItem("userToken", "abc123", passphrase);
 
-  // Retrieve the value (will decrypt using passphrase)
-  const value = await SecureKV.getItem("userToken", passphrase);
-  console.log("Decrypted value:", value);
+    // Retrieve the value (will decrypt using passphrase)
+    const value = await SecureKV.getItem("userToken", passphrase);
+    console.log("Decrypted value:", value);
 
-  // Remove a value
-  await SecureKV.removeItem("userToken");
+    // Remove a value
+    await SecureKV.removeItem("userToken");
 
-  // Clear all values (⚠️ irreversible)
-  await SecureKV.clear();
+    // Clear all values (⚠️ irreversible)
+    await SecureKV.clear();
 
-  // Verify passphrase against stored value
-  const ok = await SecureKV.verify("userToken", passphrase);
-  console.log("Password match?", ok);
+    // Verify passphrase correctness
+    await SecureKV.createVerifyBlob(passphrase); // call once to set verification value
+    const ok = await SecureKV.verify(passphrase);
+    console.log("Password match?", ok);
 }
+
+
 
 ```
 ## 🔑 API
@@ -85,7 +90,11 @@ Removes a stored item.
 
 Clears all stored secure items.
 
-`verify(key, passphrase)`
+`createVerifyBlob(passphrase)`
+
+Stores a hidden encrypted “ok” marker for passphrase validation.
+
+`verify(passphrase)`
 
 Checks if a stored item can be decrypted with the given passphrase.
 
