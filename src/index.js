@@ -1,5 +1,5 @@
 // src/index.js
-import * as core from './core';
+import * as core from './core.js';
 
 const SecureKV = {
     // note: all APIs that decrypt require a passphrase parameter

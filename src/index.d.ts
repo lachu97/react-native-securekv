@@ -10,24 +10,28 @@ declare module "react-native-securekv" {
         kdfParams?: KdfParams;
     }
 
-    export function setItem(
-        key: string,
-        value: string,
-        passphrase: string,
-        options?: SetItemOptions
-    ): Promise<void>;
+    export interface SecureKV {
+        setItem(
+            key: string,
+            value: string,
+            passphrase: string,
+            options?: SetItemOptions
+        ): Promise<void>;
 
-    export function getItem(
-        key: string,
-        passphrase: string
-    ): Promise<string | null>;
+        getItem(
+            key: string,
+            passphrase: string
+        ): Promise<string | null>;
 
-    export function removeItem(key: string): Promise<void>;
+        removeItem(key: string): Promise<void>;
 
-    export function clear(): Promise<void>;
+        clear(): Promise<void>;
 
-    export function verify(
-        key: string,
-        passphrase: string
-    ): Promise<boolean>;
+        verify(passphrase: string): Promise<boolean>;
+
+        createVerifyBlob(passphrase: string): Promise<void>;
+    }
+
+    const SecureKV: SecureKV;
+    export default SecureKV;
 }

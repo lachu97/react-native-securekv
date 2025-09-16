@@ -1,7 +1,7 @@
 {
   "name": "react-native-securekv",
   "version": "0.4.4",
-  "description": "Secure key-value storage for React Native (Argon2 + AES-GCM)",
+  "description": "Secure key-value storage for React Native (AES + SHA Hashing + AES-GCM)",
   "main": "lib/index.js",
   "files": [
     "lib",
@@ -20,10 +20,10 @@
     "secure",
     "storage",
     "aes-gcm",
-    "argon2",
     "react-native-securekv",
     "react-native-secure",
-    "crypto-storage"
+    "crypto-storage",
+    "react-native-simple-crypto"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "buffer": "^6.0.3",
     "react-native-get-random-values": "^1.11.0",
     "react-native-simple-crypto": "^0.2.15"
   },
