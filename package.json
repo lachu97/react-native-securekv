@@ -1,7 +1,7 @@
 {
   "name": "react-native-securekv",
   "version": "1.2.0",
-  "description": "Secure key-value storage for React Native (AES + SHA Hashing + AES-GCM)",
+  "description": "Light-Weight Secure key-value storage for React Native (AES + SHA Hashing + AES-GCM)",
   "main": "lib/index.js",
   "files": [
     "lib",
@@ -28,7 +28,8 @@
     "AES",
     "PBKDF2-SHA256",
     "Encrypt",
-    "Secure storage"
+    "Secure storage",
+    "Key value storage"
   ],
   "license": "MIT",
   "peerDependencies": {
