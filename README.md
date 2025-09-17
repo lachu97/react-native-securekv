@@ -13,6 +13,8 @@ Here’s how it works (encrypt → decrypt → verify) 👇
 
 ![SecureKV Demo](./demo/securkv.gif)
 
+- Check the Github Repo ![Click here](https://github.com/lachu97/react-native-securekv)
+
 
 ## ✨ Features
 - 🔑 Strong PBKDF2-SHA256 key derivation (configurable iterations, salt).
