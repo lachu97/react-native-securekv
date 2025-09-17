@@ -1,6 +1,6 @@
 # 📦 react-native-securekv
 
-**Secure key-value storage for React Native apps**  
+**Light-Weight Secure key-value storage for React Native apps**  
 Built on **PBKDF2-SHA256** key derivation and **AES-256-GCM** encryption 
 Unlike `AsyncStorage`, all values are encrypted and can only be decrypted with the correct passphrase.  
 If the passphrase is lost, the data is unrecoverable.
@@ -8,17 +8,19 @@ If the passphrase is lost, the data is unrecoverable.
 ---
 
 ## ✨ Features
-🔑 Strong PBKDF2-SHA256 key derivation (configurable iterations, salt).
+- 🔑 Strong PBKDF2-SHA256 key derivation (configurable iterations, salt).
 
-🔒 AES-256-GCM encryption with authentication (detects tampering).
+- 🔒 AES-256-GCM encryption with authentication (detects tampering).
 
-🚫 Passphrase required for both encryption and decryption — no accidental leaks.
+- 🚫 Passphrase required for both encryption and decryption — no accidental leaks.
 
-🧹 Utilities to remove or clear stored items.
+- 🧹 Utilities to remove or clear stored items.
 
-✅ Passphrase verification helper.
+- ✅ Passphrase verification helper.
 
-⚡ Drop-in for React Native apps (iOS + Android).
+- ⚡ Drop-in for React Native apps (iOS + Android).
+
+- Useful for Banking and other Crypto Apps that wanna prioritize security. 
 
 ---
 
@@ -111,3 +113,7 @@ Checks if a stored item can be decrypted with the given passphrase.
 ## 📜 License
 
 MIT © 2025
+
+##  Future & Support
+ - Anyone would like to contribute to this repo, Kindly ping me or send an email with your github ID to this mail: stellarworks03@gmail.com
+ - If you find this repo useful give a star on github

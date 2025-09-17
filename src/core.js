@@ -29,7 +29,7 @@ export async function encryptAndStore(itemKey, plainText, passphrase) {
         'SHA256',
     );
 
-    const ivBuf = await SimpleCrypto.utils.randomBytes(12);
+    const ivBuf = await SimpleCrypto.utils.randomBytes(16);
 
     // convert plaintext to ArrayBuffer
     const plainBuf = SimpleCrypto.utils.convertUtf8ToArrayBuffer(plainText);
