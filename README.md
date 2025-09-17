@@ -11,7 +11,7 @@ If the passphrase is lost, the data is unrecoverable.
 
 Here’s how it works (encrypt → decrypt → verify) 👇
 
-![SecureKV Demo](https://drive.google.com/file/d/1L7CPacTHNddmTxhNJswMFMM9JjHduWEU/view?usp=sharing)
+![SecureKV Demo](./demo/securkv.gif)
 
 
 ## ✨ Features
